@@ -1,8 +1,8 @@
-use std::fmt::Display;
+use std::fmt::{Display, Debug};
 
 use serde::Deserialize;
-use url::Url;
 use ureq;
+use url::Url;
 
 #[allow(dead_code)]
 pub struct NewsApi {
@@ -15,34 +15,68 @@ pub struct NewsApi {
 #[derive(Deserialize, Debug, Clone)]
 #[allow(dead_code)]
 pub struct News {
-    pub title: String,
-    pub description: String,
-    pub url: String,
+    title: String,
+    description: String,
+    url: String,
+}
+
+impl News {
+    pub fn get_title(&self) -> &str {
+        &self.title
+    }
+
+    pub fn get_desc(&self) -> &str {
+        &self.description
+    }
+
+    pub fn get_url(&self) -> &str {
+        &self.url
+    }
+
+    pub fn mock() -> Self {
+        Self {
+            title: "A bunch of unknown projects are being undertaken by teh Metropolitan institute A bunch of unknown projects are being undertaken by teh Metropolitan institute".to_owned(),
+            description: "Sorts a Vector of Person structs with properties name and age by its natural order (By name and age). In order to make Person sortable you need four traits Eq, PartialEq, Ord and PartialOrd. These traits can be simply derived. You can also provide a custom comparator function using a vec:sort_by method and sort only by age.".to_owned(),
+            url: "helloworldatcnbc@gmail.com/dailynews/api/random/everuthing/institute".to_owned(),
+        }
+    }
 }
 
 #[allow(dead_code)]
-#[derive(Debug, Clone, Copy)]
-pub enum Fils{
-    HEADLINES,EVERTHING,
+#[derive(Clone, Copy)]
+pub enum Fils {
+    HEADLINES,
+    EVERTHING,
 }
 
 #[allow(dead_code)]
-pub enum Locs{
-    US, JAPAN,CANADA,
+pub enum Locs {
+    US,
+    JAPAN,
+    CANADA,
 }
 
-impl Display for Fils{
+impl Display for Fils {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self{
+        match self {
             Fils::HEADLINES => write!(f, "top-headlines"),
             Fils::EVERTHING => write!(f, "everything"),
         }
     }
 }
 
-impl Display for Locs{
+impl Debug for Fils {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self{
+        match self {
+            Self::HEADLINES => write!(f, "HEADLINES"),
+            Self::EVERTHING => write!(f, "ALL"),
+        }
+    }
+}
+
+impl Display for Locs {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
             Locs::US => write!(f, "us"),
             Locs::JAPAN => write!(f, "japan"),
             Locs::CANADA => write!(f, "canada"),
@@ -77,8 +111,23 @@ impl NewsApi {
         }
     }
 
-    pub fn fetch(& mut self) -> &Vec<News> {
-        if let None = self.response{
+    pub fn mock(&mut self) -> &Vec<News> {
+        let mut vec: Vec<News> = Vec::new();
+
+        for _ in 0..100 {
+            vec.push(News::mock());
+        }
+
+        self.response = Some(ApiResponse{
+            status: "ok".to_owned(),
+            articles: vec,
+        });
+
+        &self.response.as_ref().unwrap().articles
+    }
+
+    pub fn fetch(&mut self) -> &Vec<News> {
+        if let None = self.response {
             self.response = self.querry_api();
         }
 
@@ -109,5 +158,4 @@ impl NewsApi {
 
         res
     }
-
 }
