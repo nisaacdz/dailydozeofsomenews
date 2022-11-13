@@ -1,6 +1,6 @@
 use eframe::{
     egui::{
-        Align, CentralPanel, CollapsingHeader, Context, Hyperlink, Layout, RichText,
+        Align, CentralPanel, CollapsingHeader, Context, Hyperlink, Label, Layout, RichText,
         ScrollArea, Separator, TextStyle, TopBottomPanel, Ui,
     },
     epaint::Color32,
@@ -56,24 +56,29 @@ fn design_body(ui: &mut Ui, items: &Vec<News>, fil: &str) {
     let items = filter(items, fil);
     ScrollArea::vertical().show(ui, |ui| {
         design_cards(ui, &items);
+        ui.add_space(60.);
     });
 }
 
 fn design_cards(ui: &mut Ui, items: &Vec<&News>) {
     for (index, item) in items.iter().enumerate() {
-        ui.add_space(PADDING);
-        ui.add(Separator::default().spacing(20.));
-        ui.push_id(format!("head{}", index), |ui| {
-            ui.label(
-                RichText::new(item.get_title())
-                    .size(20.)
-                    .text_style(TextStyle::Heading)
-                    .strong()
-                    .color(Color32::LIGHT_RED),
-            );
-        });
+        ui.push_id(format!("{}", index), |ui| {
+            ui.add_space(PADDING);
+            ui.add(Separator::default().spacing(10.));
 
-        ui.push_id(format!("997{}", index), |ui| {
+            //Adding the title of each news item
+            ui.add(
+                Label::new(
+                    RichText::new(item.get_title())
+                        .size(20.)
+                        .text_style(TextStyle::Heading)
+                        .strong()
+                        .color(Color32::LIGHT_RED),
+                )
+                .wrap(true),
+            );
+
+            //Adding the body of each news item
             CollapsingHeader::new(
                 RichText::new(item.get_desc())
                     .strong()
