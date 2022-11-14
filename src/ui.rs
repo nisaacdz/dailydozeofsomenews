@@ -1,13 +1,13 @@
 use eframe::{
     egui::{
-        Align, CentralPanel, CollapsingHeader, Context, Hyperlink, Label, Layout, RichText,
-        ScrollArea, Separator, TextStyle, TopBottomPanel, Ui,
+        Align, Button, CentralPanel, ComboBox, Context, FontSelection, Hyperlink, Layout, RichText,
+        ScrollArea, Separator, TextEdit, TextStyle, TopBottomPanel, Ui,
     },
-    epaint::Color32,
+    epaint::{Color32, FontFamily, FontId},
     App, Frame,
 };
 
-use crate::api::{News, NewsApi};
+use crate::api::{self, News, NewsApi};
 
 const PADDING: f32 = 10.0;
 const CYAN: Color32 = Color32::from_rgb(0, 255, 255);
@@ -30,15 +30,25 @@ impl App for NewsUI {
     fn update(&mut self, ctx: &Context, _frame: &mut Frame) {
         CentralPanel::default().show(ctx, |ui| {
             design_header(ui, format!("{:?}", self.news_api.request.end_point));
-            design_body(ui, self.news_api.mock(), &self.filter);
+            design_body(ui, self.news_api.fake_fetch(), &self.filter);
             design_footer(ctx);
         });
     }
 }
 
+#[allow(unused_must_use)]
 fn design_header(ui: &mut Ui, label: String) {
-    ui.vertical_centered(|ui| {
-        ui.heading(label);
+    let label = label.as_str();
+
+    ui.horizontal(|ui| {
+        ComboBox::new("id_source", "")
+            .selected_text(label)
+            .show_ui(ui, |ui| {
+                ui.selectable_label(true, format!("{:?}", api::Fils::EVERTHING));
+                ui.selectable_label(true, format!("{:?}", api::Fils::HEADLINES));
+            });
+        ui.add(Button::new("🗘"));
+        ui.add(TextEdit::singleline(&mut "".to_owned()));
     });
     ui.add_space(PADDING);
     ui.add(Separator::default().spacing(20.));
@@ -54,6 +64,7 @@ fn design_footer(ctx: &Context) {
 
 fn design_body(ui: &mut Ui, items: &Vec<News>, fil: &str) {
     let items = filter(items, fil);
+
     ScrollArea::vertical().show(ui, |ui| {
         design_cards(ui, &items);
         ui.add_space(60.);
@@ -62,40 +73,49 @@ fn design_body(ui: &mut Ui, items: &Vec<News>, fil: &str) {
 
 fn design_cards(ui: &mut Ui, items: &Vec<&News>) {
     for (index, item) in items.iter().enumerate() {
-        ui.push_id(format!("{}", index), |ui| {
-            ui.add_space(PADDING);
-            ui.add(Separator::default().spacing(10.));
-
-            //Adding the title of each news item
-            ui.add(
-                Label::new(
-                    RichText::new(item.get_title())
-                        .size(20.)
-                        .text_style(TextStyle::Heading)
-                        .strong()
-                        .color(Color32::LIGHT_RED),
-                )
-                .wrap(true),
-            );
-
-            //Adding the body of each news item
-            CollapsingHeader::new(
-                RichText::new(item.get_desc())
-                    .strong()
-                    .size(18.)
-                    .color(Color32::GOLD)
-                    .text_style(TextStyle::Button),
-            )
-            .show(ui, |ui| {
-                ui.with_layout(Layout::left_to_right(Align::Min), |ui| {
-                    ui.add(Hyperlink::from_label_and_url(
-                        RichText::new("read more ⤴")
-                            .color(CYAN)
-                            .text_style(TextStyle::Monospace),
-                        item.get_url(),
-                    ));
-                });
+        ui.push_id(format!("id = {}", index), |ui| {
+            ui.push_id(format!("id = {}.0", index), |ui| {
+                TextEdit::multiline(&mut item.get_title())
+                    .text_color(Color32::WHITE)
+                    .font(FontSelection::FontId(FontId::new(
+                        20.,
+                        FontFamily::Monospace,
+                    )))
+                    .desired_width(ui.available_width())
+                    .desired_rows(1)
+                    .show(ui);
             });
+
+            ui.horizontal_wrapped(|ui| {
+                ui.label(format!("From: {}", item.get_source().get_name()));
+                ui.label(" | ");
+                ui.label(format!("Author: {}", item.get_author()));
+            });
+
+            ui.push_id(format!("id = {}.1", index), |ui| {
+                TextEdit::multiline(&mut item.get_desc())
+                    .code_editor()
+                    .text_color(Color32::LIGHT_RED)
+                    .font(FontSelection::FontId(FontId::new(
+                        20.,
+                        FontFamily::Monospace,
+                    )))
+                    .desired_width(ui.available_width())
+                    .desired_rows(1)
+                    .show(ui);
+            });
+
+            ui.with_layout(Layout::right_to_left(Align::TOP), |ui| {
+                ui.add(Hyperlink::from_label_and_url(
+                    RichText::new("read more ⤴")
+                        .color(CYAN)
+                        .size(16.)
+                        .text_style(TextStyle::Small),
+                    item.get_url(),
+                ));
+            });
+
+            ui.add(Separator::default().spacing(10.));
         });
     }
 }
@@ -131,7 +151,7 @@ fn get(mut vec: Vec<(&News, i32)>) -> Vec<&News> {
             break;
         }
 
-        ans.push(vec.get(0).unwrap().0);
+        ans.push(vec.get(index).unwrap().0);
     }
 
     ans

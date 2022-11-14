@@ -1,4 +1,5 @@
-use std::fmt::{Display, Debug};
+use rnd;
+use std::fmt::{Debug, Display};
 
 use serde::Deserialize;
 use ureq;
@@ -10,14 +11,30 @@ pub struct NewsApi {
     address: String,
     pub request: ApiRequest,
     response: Option<ApiResponse>,
+    failure: Vec<News>,
 }
 
 #[derive(Deserialize, Debug, Clone)]
 #[allow(dead_code)]
 pub struct News {
     title: String,
+    source: Source,
+    author: String,
     description: String,
     url: String,
+}
+
+#[derive(Deserialize, Debug, Clone)]
+#[allow(dead_code)]
+pub struct Source {
+    name: String,
+}
+
+#[allow(dead_code)]
+impl Source {
+    pub fn get_name(&self) -> &str {
+        &self.name
+    }
 }
 
 impl News {
@@ -33,11 +50,23 @@ impl News {
         &self.url
     }
 
+    pub fn get_author(&self) -> &str {
+        &self.author
+    }
+
+    pub fn get_source(&self) -> &Source {
+        &self.source
+    }
+
     pub fn mock() -> Self {
         Self {
-            title: "A bunch of unknown projects are being undertaken by teh Metropolitan institute A bunch of unknown projects are being undertaken by teh Metropolitan institute".to_owned(),
-            description: "Sorts a Vector of Person structs with properties name and age by its natural order (By name and age). In order to make Person sortable you need four traits Eq, PartialEq, Ord and PartialOrd. These traits can be simply derived. You can also provide a custom comparator function using a vec:sort_by method and sort only by age.".to_owned(),
-            url: "helloworldatcnbc@gmail.com/dailynews/api/random/everuthing/institute".to_owned(),
+            title: rnd::write_sentence(30),
+            description: rnd::write_sentence(60),
+            url: rnd::write_sentence(8),
+            source: Source {
+                name: rnd::write_word(),
+            },
+            author: format!("{} {}", rnd::write_word(), rnd::write_word()),
         }
     }
 }
@@ -94,6 +123,7 @@ pub struct ApiRequest {
 #[allow(dead_code)]
 struct ApiResponse {
     status: String,
+    pub code: Option<String>,
     articles: Vec<News>,
 }
 
@@ -108,30 +138,80 @@ impl NewsApi {
                 end_point: Fils::HEADLINES,
             },
             response: None,
+            failure: vec![News {
+                title: "None Available".to_owned(),
+                description: "None available".to_owned(),
+                url: String::new(),
+                source: Source {
+                    name: String::new(),
+                },
+                author: String::new(),
+            }],
         }
     }
 
-    pub fn mock(&mut self) -> &Vec<News> {
-        let mut vec: Vec<News> = Vec::new();
-
-        for _ in 0..100 {
-            vec.push(News::mock());
-        }
-
-        self.response = Some(ApiResponse{
-            status: "ok".to_owned(),
-            articles: vec,
-        });
-
-        &self.response.as_ref().unwrap().articles
+    pub fn fake_fetch(&mut self) -> &Vec<News> {
+        self.mock().fetch().collect()
     }
 
-    pub fn fetch(&mut self) -> &Vec<News> {
+    pub fn mock(&mut self) -> &mut Self {
         if let None = self.response {
-            self.response = self.querry_api();
+            let mut vec: Vec<News> = Vec::new();
+
+            for _ in 0..200 {
+                vec.push(News::mock());
+            }
+
+            self.response = Some(ApiResponse {
+                status: "ok".to_owned(),
+                code: Some("apiKeyDisabled".to_owned()),
+                articles: vec,
+            });
         }
 
-        &self.response.as_ref().unwrap().articles
+        self
+    }
+
+    pub fn collect(&self) -> &Vec<News> {
+        let res = self.response.as_ref();
+
+        if let None = res {
+            return &self.failure;
+        }
+
+        let res = res.unwrap();
+
+        match res.status.as_str() {
+            "ok" => return &self.response.as_ref().unwrap().articles,
+            _ => return &self.failure,
+        };
+    }
+
+    pub fn fetch(&mut self) -> &Self {
+        if let None = self.response {
+            let res = self.querry_api();
+
+            match res {
+                Ok(val) => match val.status.as_str() {
+                    "ok" => self.response = Some(val),
+                    _ => self.map_request_error(&val.code),
+                },
+                Err(e) => self.write_error(e),
+            }
+        }
+        self
+    }
+
+    fn write_error(&mut self, err: ApiError) {
+        self.failure = vec![News {
+            title: format!("{:?}", err),
+            description: "Nothing available".to_owned(),
+            url: "".to_owned(),
+            source: Source {
+                name: String::new(),
+            },
+            author: String::new(),
+        }];
     }
 
     pub fn fetch_with(&mut self, loc: Locs, point: Fils) -> &Vec<News> {
@@ -140,10 +220,10 @@ impl NewsApi {
 
         self.response = None;
 
-        self.fetch()
+        self.fetch().collect()
     }
 
-    fn querry_api(&self) -> Option<ApiResponse> {
+    fn querry_api(&self) -> Result<ApiResponse, ApiError> {
         let mut url = Url::parse(self.address.as_str()).unwrap();
         url.path_segments_mut()
             .unwrap()
@@ -154,8 +234,39 @@ impl NewsApi {
 
         let req = ureq::get(&url).set("Authorization", &self.api_key);
 
-        let res: Option<ApiResponse> = req.call().unwrap().into_json().unwrap();
+        let res: ApiResponse = req.call()?.into_json()?;
 
-        res
+        Ok(res)
     }
+
+    pub fn map_request_error(&mut self, code: &Option<String>) {
+        if let Some(code) = code {
+            match code.as_str() {
+                "apiKeyDisabled" => {
+                    self.write_error(ApiError::BadRequest("Api key disabled"));
+                }
+                _ => {
+                    self.write_error(ApiError::BadRequest("Unknown Error"));
+                }
+            }
+        } else {
+            self.write_error(ApiError::BadRequest("Unknown Error"));
+        }
+    }
+}
+
+#[derive(thiserror::Error, Debug)]
+pub enum ApiError {
+    #[error("Could not fetch articles")]
+    FetchFailed(#[from] ureq::Error),
+    #[error("Could not convert articles to string")]
+    ParsingFailed(#[from] std::io::Error),
+    #[error("Could not parse articles to Articles struct")]
+    JsonError(#[from] serde_json::Error),
+    #[error("Could not parse given string into url")]
+    UrlError(#[from] url::ParseError),
+    #[error("Request failed {0}")]
+    BadRequest(&'static str),
+    #[error("Async fetching failed")]
+    AsyncError(#[from] reqwest::Error),
 }
