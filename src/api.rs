@@ -27,6 +27,7 @@ pub struct News {
 #[derive(Deserialize, Debug, Clone)]
 #[allow(dead_code)]
 pub struct Source {
+    id: Option<i64>,
     name: String,
 }
 
@@ -64,6 +65,7 @@ impl News {
             description: rnd::write_sentence(60),
             url: rnd::write_sentence(8),
             source: Source {
+                id: None,
                 name: rnd::write_word(),
             },
             author: format!("{} {}", rnd::write_word(), rnd::write_word()),
@@ -143,6 +145,7 @@ impl NewsApi {
                 description: "None available".to_owned(),
                 url: String::new(),
                 source: Source {
+                    id: None,
                     name: String::new(),
                 },
                 author: String::new(),
@@ -152,6 +155,10 @@ impl NewsApi {
 
     pub fn fake_fetch(&mut self) -> &Vec<News> {
         self.mock().fetch().collect()
+    }
+
+    pub fn real_fetch(&mut self) -> &Vec<News> {
+        self.fetch().collect()
     }
 
     pub fn mock(&mut self) -> &mut Self {
@@ -208,6 +215,7 @@ impl NewsApi {
             description: "Nothing available".to_owned(),
             url: "".to_owned(),
             source: Source {
+                id: None,
                 name: String::new(),
             },
             author: String::new(),

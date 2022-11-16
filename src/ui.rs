@@ -30,7 +30,7 @@ impl App for NewsUI {
     fn update(&mut self, ctx: &Context, _frame: &mut Frame) {
         CentralPanel::default().show(ctx, |ui| {
             design_header(ui, format!("{:?}", self.news_api.request.end_point));
-            design_body(ui, self.news_api.fake_fetch(), &self.filter);
+            design_body(ui, self.news_api.real_fetch(), &self.filter);
             design_footer(ctx);
         });
     }
