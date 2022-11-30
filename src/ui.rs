@@ -6,49 +6,61 @@ use eframe::{
     epaint::{Color32, FontFamily, FontId},
     App, Frame,
 };
-
-use crate::api::{self, News, NewsApi};
+use lib::{
+    api::{Api, Fils, News},
+    rd,
+};
 
 const PADDING: f32 = 10.0;
 const CYAN: Color32 = Color32::from_rgb(0, 255, 255);
 
-pub struct NewsUI {
-    news_api: NewsApi,
+pub struct UI {
+    news_api: Api,
     filter: String,
 }
 
-impl NewsUI {
-    pub fn new(_: &eframe::CreationContext<'_>, api: NewsApi) -> NewsUI {
-        NewsUI {
+#[allow(dead_code)]
+impl UI {
+    pub fn new(_: &eframe::CreationContext<'_>, api: Api) -> Self {
+        Self {
             news_api: api,
             filter: "".to_owned(),
         }
     }
+
+    pub fn get_s(&mut self) -> &mut String {
+        &mut self.filter
+    }
 }
 
-impl App for NewsUI {
+impl App for UI {
     fn update(&mut self, ctx: &Context, _frame: &mut Frame) {
+        let ep = format!("{:?}", self.news_api.request.end_point);
         CentralPanel::default().show(ctx, |ui| {
-            design_header(ui, format!("{:?}", self.news_api.request.end_point));
-            design_body(ui, self.news_api.real_fetch(), &self.filter);
+            design_header(self.get_s(), ui, ep);
+            design_body(
+                ui,
+                rd::read_ureq(&mut self.news_api).unwrap().collect(),
+                &self.filter,
+            );
             design_footer(ctx);
         });
     }
 }
 
 #[allow(unused_must_use)]
-fn design_header(ui: &mut Ui, label: String) {
+fn design_header(fil: &mut String, ui: &mut Ui, label: String) {
     let label = label.as_str();
 
     ui.horizontal(|ui| {
         ComboBox::new("id_source", "")
             .selected_text(label)
             .show_ui(ui, |ui| {
-                ui.selectable_label(true, format!("{:?}", api::Fils::EVERTHING));
-                ui.selectable_label(true, format!("{:?}", api::Fils::HEADLINES));
+                ui.selectable_label(true, format!("{:?}", Fils::EVERTHING));
+                ui.selectable_label(true, format!("{:?}", Fils::HEADLINES));
             });
         ui.add(Button::new("🗘"));
-        ui.add(TextEdit::singleline(&mut "".to_owned()));
+        ui.add(TextEdit::singleline(fil));
     });
     ui.add_space(PADDING);
     ui.add(Separator::default().spacing(20.));

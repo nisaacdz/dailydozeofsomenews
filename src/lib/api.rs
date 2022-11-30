@@ -1,7 +1,11 @@
-use rnd;
-use std::fmt::{Debug, Display};
+use std::fmt::Debug;
+use std::fmt::Display;
 
+use crate::rnd;
 use serde::Deserialize;
+
+/*
+use std::fmt::{Debug, Display};
 use ureq;
 use url::Url;
 
@@ -14,63 +18,39 @@ pub struct NewsApi {
     failure: Vec<News>,
 }
 
-#[derive(Deserialize, Debug, Clone)]
-#[allow(dead_code)]
-pub struct News {
-    title: String,
-    source: Source,
-    author: String,
-    description: String,
-    url: String,
+*/
+pub struct Api {
+    pub request: ApiRequest,
+    pub response: Option<ApiResponse>,
 }
 
-#[derive(Deserialize, Debug, Clone)]
-#[allow(dead_code)]
-pub struct Source {
-    id: Option<i64>,
-    name: String,
-}
-
-#[allow(dead_code)]
-impl Source {
-    pub fn get_name(&self) -> &str {
-        &self.name
-    }
-}
-
-impl News {
-    pub fn get_title(&self) -> &str {
-        &self.title
-    }
-
-    pub fn get_desc(&self) -> &str {
-        &self.description
-    }
-
-    pub fn get_url(&self) -> &str {
-        &self.url
-    }
-
-    pub fn get_author(&self) -> &str {
-        &self.author
-    }
-
-    pub fn get_source(&self) -> &Source {
-        &self.source
-    }
-
-    pub fn mock() -> Self {
+impl Api {
+    pub fn new() -> Self {
         Self {
-            title: rnd::write_sentence(30),
-            description: rnd::write_sentence(60),
-            url: rnd::write_sentence(8),
-            source: Source {
-                id: None,
-                name: rnd::write_word(),
+            request: ApiRequest {
+                country: Locs::US,
+                end_point: Fils::HEADLINES,
             },
-            author: format!("{} {}", rnd::write_word(), rnd::write_word()),
+            response: None,
         }
     }
+
+    pub fn get_request(&self) -> &ApiRequest {
+        &self.request
+    }
+
+    pub fn get_response(&self) -> Option<&ApiResponse> {
+        if let None = self.response {
+            return None;
+        }
+
+        Some(self.response.as_ref().unwrap())
+    }
+
+    pub fn collect(&self) -> &Vec<News> {
+        self.response.as_ref().unwrap().get_articles()
+    }
+
 }
 
 #[allow(dead_code)]
@@ -85,6 +65,9 @@ pub enum Locs {
     US,
     JAPAN,
     CANADA,
+    GREATBRITAIN,
+    CHINA,
+    RUSSIA,
 }
 
 impl Display for Fils {
@@ -109,8 +92,11 @@ impl Display for Locs {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Locs::US => write!(f, "us"),
-            Locs::JAPAN => write!(f, "japan"),
-            Locs::CANADA => write!(f, "canada"),
+            Locs::JAPAN => write!(f, "jp"),
+            Locs::CANADA => write!(f, "ca"),
+            Locs::GREATBRITAIN => write!(f, "gb"),
+            Locs::RUSSIA => write!(f, "rs"),
+            Locs::CHINA => write!(f, "cn"),
         }
     }
 }
@@ -121,14 +107,110 @@ pub struct ApiRequest {
     pub end_point: Fils,
 }
 
+impl ApiRequest {
+    pub fn ep(&self) -> &Fils {
+        &self.end_point
+    }
+
+    pub fn cn(&self) ->  &Locs {
+        &self.country
+    }
+}
+
 #[derive(Deserialize, Debug, Clone)]
 #[allow(dead_code)]
-struct ApiResponse {
+pub struct News {
+    title: String,
+    source: Source,
+    author: Option<String>,
+    description: Option<String>,
+    url: String,
+}
+
+#[derive(Deserialize, Debug, Clone)]
+#[allow(dead_code)]
+pub struct Source {
+    id: Option<String>,
+    name: String,
+}
+
+#[allow(dead_code)]
+impl Source {
+    pub fn get_name(&self) -> &str {
+        &self.name
+    }
+}
+
+impl News {
+    pub fn get_title(&self) -> &str {
+        &self.title
+    }
+
+    pub fn get_desc(&self) -> &str {
+        if let Some(v) = &self.description {
+            return v;
+        }
+
+        "None Available"
+    }
+
+    pub fn get_url(&self) -> &str {
+        &self.url
+    }
+
+    pub fn get_author(&self) -> &str {
+        if let None = self.author {
+            return "";
+        }
+
+        &self.author.as_ref().unwrap()
+    }
+
+    pub fn get_source(&self) -> &Source {
+        &self.source
+    }
+
+    pub fn mock() -> Self {
+        Self {
+            title: rnd::write_sentence(30),
+            description: Some(rnd::write_sentence(60)),
+            url: rnd::write_sentence(8),
+            source: Source {
+                id: None,
+                name: rnd::write_word(),
+            },
+            author: Some(format!("{} {}", rnd::write_word(), rnd::write_word())),
+        }
+    }
+}
+
+/*
+
+
+*/
+
+#[derive(Deserialize, Debug, Clone)]
+#[allow(dead_code)]
+pub struct ApiResponse {
     status: String,
-    pub code: Option<String>,
     articles: Vec<News>,
 }
 
+impl ApiResponse {
+
+    pub fn new(s: String, vec: Vec<News>) -> Self {
+        Self {
+            status: s,
+            articles: vec,
+        }
+    }
+
+    pub fn get_articles(&self) -> &Vec<News> {
+        &self.articles
+    }
+}
+
+/*
 #[allow(dead_code)]
 impl NewsApi {
     pub fn new(ad: String, key: String) -> Self {
@@ -148,7 +230,7 @@ impl NewsApi {
                     id: None,
                     name: String::new(),
                 },
-                author: String::new(),
+                author: None,
             }],
         }
     }
@@ -218,7 +300,7 @@ impl NewsApi {
                 id: None,
                 name: String::new(),
             },
-            author: String::new(),
+            author: None,
         }];
     }
 
@@ -247,6 +329,10 @@ impl NewsApi {
         Ok(res)
     }
 
+    */
+
+/*
+
     pub fn map_request_error(&mut self, code: &Option<String>) {
         if let Some(code) = code {
             match code.as_str() {
@@ -263,18 +349,4 @@ impl NewsApi {
     }
 }
 
-#[derive(thiserror::Error, Debug)]
-pub enum ApiError {
-    #[error("Could not fetch articles")]
-    FetchFailed(#[from] ureq::Error),
-    #[error("Could not convert articles to string")]
-    ParsingFailed(#[from] std::io::Error),
-    #[error("Could not parse articles to Articles struct")]
-    JsonError(#[from] serde_json::Error),
-    #[error("Could not parse given string into url")]
-    UrlError(#[from] url::ParseError),
-    #[error("Request failed {0}")]
-    BadRequest(&'static str),
-    #[error("Async fetching failed")]
-    AsyncError(#[from] reqwest::Error),
-}
+*/

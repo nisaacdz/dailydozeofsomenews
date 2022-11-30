@@ -1,0 +1,15 @@
+pub async fn fetch_async(&self) -> Result<NewsApiResponse, NewsApiError>{
+    let url = self.get_url();
+    let client = reqwest::Client::new();
+    let req = client.request(Method::GET, url)
+    .header("Authorization", self.api_key).build()
+    .map_err(|e| NewsApiError::NewsApiAsyncRequestFailed(e))?;
+
+    let response: NewsApiResponse = client.execute(req).await?
+    .json().await.map_err(|e| NewsApiError::NewsApiAsyncRequestFailed(e))?;
+    match res.status.as_str() {
+        "ok" => return Ok(res),
+        _=> return Err(map_request_error(res.code)),
+    };
+}
+{"status":"error","code":"apiKeyMissing","message":"Your API key is missing. Append this to the URL with the apiKey param, or use the x-api-key HTTP header."}
