@@ -4,21 +4,6 @@ use std::fmt::Display;
 use crate::rnd;
 use serde::Deserialize;
 
-/*
-use std::fmt::{Debug, Display};
-use ureq;
-use url::Url;
-
-#[allow(dead_code)]
-pub struct NewsApi {
-    api_key: String,
-    address: String,
-    pub request: ApiRequest,
-    response: Option<ApiResponse>,
-    failure: Vec<News>,
-}
-
-*/
 pub struct Api {
     pub request: ApiRequest,
     pub response: Option<ApiResponse>,
