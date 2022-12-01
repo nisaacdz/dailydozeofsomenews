@@ -10,5 +10,5 @@ pub enum MyErrs {
 
     //TEMP
     UreqError,
-    JsonParseErr(serde_json::Error),
+    JsonParseErr,
 }

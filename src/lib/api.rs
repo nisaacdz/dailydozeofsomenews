@@ -7,6 +7,7 @@ use serde::Deserialize;
 pub struct Api {
     pub request: ApiRequest,
     pub response: Option<ApiResponse>,
+    query: (Fils, Locs),
 }
 
 impl Api {
@@ -17,11 +18,16 @@ impl Api {
                 end_point: Fils::HEADLINES,
             },
             response: None,
+            query: (Fils::HEADLINES, Locs::US),
         }
     }
 
     pub fn get_request(&self) -> &ApiRequest {
         &self.request
+    }
+
+    pub fn get_request_mut(&mut self) -> &mut ApiRequest {
+        &mut self.request
     }
 
     pub fn get_response(&self) -> Option<&ApiResponse> {
@@ -32,20 +38,28 @@ impl Api {
         Some(self.response.as_ref().unwrap())
     }
 
-    pub fn collect(&self) -> &Vec<News> {
-        self.response.as_ref().unwrap().get_articles()
+    pub fn get_query(&mut self) -> &mut (Fils, Locs){
+        &mut self.query
     }
-
 }
 
 #[allow(dead_code)]
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq)]
 pub enum Fils {
     HEADLINES,
     EVERTHING,
 }
 
+impl Fils {
+    const ALL: [Fils; 2] = [Fils::HEADLINES, Fils::EVERTHING];
+
+    pub fn get_endpoints() -> &'static [Fils; 2] {
+        &Fils::ALL
+    }
+}
+
 #[allow(dead_code)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Locs {
     US,
     JAPAN,
@@ -53,6 +67,22 @@ pub enum Locs {
     GREATBRITAIN,
     CHINA,
     RUSSIA,
+}
+
+#[allow(dead_code)]
+impl Locs {
+    const ALL: [Locs; 6] = [
+        Locs::US,
+        Locs::JAPAN,
+        Locs::CANADA,
+        Locs::CHINA,
+        Locs::GREATBRITAIN,
+        Locs::RUSSIA,
+    ];
+
+    pub fn get_countries() -> &'static [Locs; 6] {
+        &Locs::ALL
+    }
 }
 
 impl Display for Fils {
@@ -93,12 +123,12 @@ pub struct ApiRequest {
 }
 
 impl ApiRequest {
-    pub fn ep(&self) -> &Fils {
-        &self.end_point
+    pub fn ep(&mut self) -> &mut Fils {
+        &mut self.end_point
     }
 
-    pub fn cn(&self) ->  &Locs {
-        &self.country
+    pub fn cn(&mut self) -> &mut Locs {
+        &mut self.country
     }
 }
 
@@ -182,7 +212,6 @@ pub struct ApiResponse {
 }
 
 impl ApiResponse {
-
     pub fn new(s: String, vec: Vec<News>) -> Self {
         Self {
             status: s,

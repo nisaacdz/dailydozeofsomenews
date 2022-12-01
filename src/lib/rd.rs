@@ -19,7 +19,7 @@ pub fn read_f(api: &mut Api) -> Result<&mut Api, MyErrs> {
     Ok(api)
 }
 
-pub async fn read(api: &mut Api) -> Result<&mut Api, MyErrs> {
+pub async fn read_req(api: &mut Api) -> Result<&mut Api, MyErrs> {
     dotenv().map_err(|_| MyErrs::CannotFindEnv)?;
 
     let url = prep_url(api)?;
@@ -40,14 +40,34 @@ pub async fn read(api: &mut Api) -> Result<&mut Api, MyErrs> {
     Ok(api)
 }
 
+pub fn read(api: &mut Api) -> Result<&mut Api, MyErrs> {
+    let cn = api.request.country;
+    let ep = api.request.end_point;
+
+    match api.get_response() {
+        Some(_) => {
+            let query = api.get_query();
+            if query.1 != cn || query.0 != ep {
+                query.1 = cn;
+                query.0 = ep;
+                return read_ureq(api);
+            } else {
+                return Ok(api);
+            }
+        }
+        None => return read_ureq(api),
+    }
+}
+
 pub fn read_ureq(api: &mut Api) -> Result<&mut Api, MyErrs> {
-    let url =
-        "https://newsapi.org/v2/top-headlines?country=us&apiKey=ce262f1d2c1a4288a8960760763fc0b1";
-    let res = ureq::get(url).call().map_err(|_| MyErrs::UreqError)?;
+    let url = prep_url(api)?;
 
-    let res = res.into_string().map_err(|_| MyErrs::UreqError)?;
+    let res = ureq::get(&url).set("Authorization", &get_key());
 
-    let res: ApiResponse = serde_json::from_str(&res).map_err(|e| MyErrs::JsonParseErr(e))?;
+    let res = res.call().map_err(|_| MyErrs::UreqError)?;
+
+    let res: ApiResponse = res.into_json().map_err(|_| MyErrs::JsonParseErr)?;
+
     api.response = Some(res);
 
     Ok(api)
@@ -61,9 +81,10 @@ fn prep_url(api: &Api) -> Result<String, MyErrs> {
         .unwrap()
         .push(&req.end_point.to_string());
     url.set_query(Some(&format!("country={}", req.country.to_string())));
+
     Ok(url.to_string())
 }
 
 pub fn get_key() -> String {
-    std::env::var("API_KEY").unwrap()
+    String::from("ce262f1d2c1a4288a8960760763fc0b1")
 }

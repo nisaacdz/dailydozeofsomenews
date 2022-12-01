@@ -1,13 +1,13 @@
 use eframe::{
     egui::{
-        Align, Button, CentralPanel, ComboBox, Context, FontSelection, Hyperlink, Layout, RichText,
+        Align, CentralPanel, ComboBox, Context, FontSelection, Hyperlink, Layout, RichText,
         ScrollArea, Separator, TextEdit, TextStyle, TopBottomPanel, Ui,
     },
     epaint::{Color32, FontFamily, FontId},
     App, Frame,
 };
 use lib::{
-    api::{Api, Fils, News},
+    api::{self, Api, News},
     rd,
 };
 
@@ -19,7 +19,6 @@ pub struct UI {
     filter: String,
 }
 
-#[allow(dead_code)]
 impl UI {
     pub fn new(_: &eframe::CreationContext<'_>, api: Api) -> Self {
         Self {
@@ -31,36 +30,72 @@ impl UI {
     pub fn get_s(&mut self) -> &mut String {
         &mut self.filter
     }
+
+    pub fn api(&mut self) -> &mut Api {
+        &mut self.news_api
+    }
 }
 
 impl App for UI {
     fn update(&mut self, ctx: &Context, _frame: &mut Frame) {
-        let ep = format!("{:?}", self.news_api.request.end_point);
         CentralPanel::default().show(ctx, |ui| {
-            design_header(self.get_s(), ui, ep);
-            design_body(
-                ui,
-                rd::read_ureq(&mut self.news_api).unwrap().collect(),
-                &self.filter,
-            );
+            design_header(self, ui);
+            let mid = rd::read(&mut self.news_api);
+            match mid {
+                Ok(api) => match api.get_response() {
+                    Some(res) => design_body(ui, res.get_articles(), &self.filter),
+                    None => design_p(ui),
+                },
+                Err(_) => design_p(ui),
+            }
             design_footer(ctx);
         });
     }
 }
 
-#[allow(unused_must_use)]
-fn design_header(fil: &mut String, ui: &mut Ui, label: String) {
-    let label = label.as_str();
+fn design_p(ui: &mut Ui) {
+    ScrollArea::vertical().show(ui, |ui| {
+        ui.centered_and_justified(|ui| {
+            ui.label("Unexpected problem");
+            ui.label("Retrying...")
+        });
+        ui.add_space(60.);
+    });
+}
+
+fn design_header(obj: &mut UI, ui: &mut Ui) {
+    ui.add(
+        TextEdit::singleline(obj.get_s())
+            .desired_width(ui.available_width())
+            .hint_text("search here")
+            .frame(false),
+    );
+
+    let api = obj.api();
+    let req = api.get_request_mut();
+
+    let selected_ep = format!("{:?}", req.ep());
+    let selected_cn = format!("{:?}", req.cn());
+
+    let locs = api::Locs::get_countries();
+    let fils = api::Fils::get_endpoints();
 
     ui.horizontal(|ui| {
-        ComboBox::new("id_source", "")
-            .selected_text(label)
+        ComboBox::new("ep", "")
+            .selected_text(selected_ep)
             .show_ui(ui, |ui| {
-                ui.selectable_label(true, format!("{:?}", Fils::EVERTHING));
-                ui.selectable_label(true, format!("{:?}", Fils::HEADLINES));
+                for fil in fils {
+                    ui.selectable_value(req.ep(), *fil, format!("{:?}", fil));
+                }
             });
-        ui.add(Button::new("🗘"));
-        ui.add(TextEdit::singleline(fil));
+
+        ComboBox::new("cn", "")
+            .selected_text(selected_cn)
+            .show_ui(ui, |ui| {
+                for loc in locs {
+                    ui.selectable_value(req.cn(), *loc, format!("{:?}", loc));
+                }
+            });
     });
     ui.add_space(PADDING);
     ui.add(Separator::default().spacing(20.));
@@ -132,11 +167,13 @@ fn design_cards(ui: &mut Ui, items: &Vec<&News>) {
     }
 }
 
+#[allow(dead_code)]
 fn filter<'a>(items: &'a Vec<News>, fil: &str) -> Vec<&'a News> {
     let mut con: Vec<(&News, i32)> = Vec::new();
 
     for item in items.iter() {
         let mut itg = 0;
+
         if item.get_title().contains(fil) {
             itg += 7;
         }
