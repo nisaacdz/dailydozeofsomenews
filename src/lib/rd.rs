@@ -33,8 +33,10 @@ pub async fn read_req(api: &mut Api) -> Result<&mut Api, MyErrs> {
         .await
         .map_err(|_| MyErrs::BadFeedback)?;
 
-    let res: ApiResponse = res.json().await.map_err(|e| MyErrs::JsonParseFailed(e))?;
+    let res = res.text().await.map_err(|_| MyErrs::ContentNotText)?;
+    println!("{}", res);
 
+    let res: ApiResponse = serde_json::from_str(&res).map_err(|_| MyErrs::JsonParseErr)?;
     api.response = Some(res);
 
     Ok(api)

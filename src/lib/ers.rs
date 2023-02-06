@@ -7,7 +7,7 @@ pub enum MyErrs {
     UrlParseFailed,
     CannotReadPage,
     BadFeedback,
-
+    ContentNotText,
     //TEMP
     UreqError,
     JsonParseErr,

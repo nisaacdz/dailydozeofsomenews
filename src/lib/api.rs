@@ -38,7 +38,7 @@ impl Api {
         Some(self.response.as_ref().unwrap())
     }
 
-    pub fn get_query(&mut self) -> &mut (Fils, Locs){
+    pub fn get_query(&mut self) -> &mut (Fils, Locs) {
         &mut self.query
     }
 }

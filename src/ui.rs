@@ -56,10 +56,9 @@ impl App for UI {
 fn design_p(ui: &mut Ui) {
     ScrollArea::vertical().show(ui, |ui| {
         ui.centered_and_justified(|ui| {
-            ui.label("Unexpected problem");
-            ui.label("Retrying...")
+            ui.label("Unexpected Problem");
+            ui.label("Retrying");
         });
-        ui.add_space(60.);
     });
 }
 
